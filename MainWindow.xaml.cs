@@ -18,7 +18,7 @@ using Python.Runtime;
 using WpfApp2;
 using System.Reflection.Metadata;
 using System.Security.Cryptography;
-
+using System.Security.AccessControl;
 
 namespace WpfApp2
 {
@@ -28,6 +28,9 @@ namespace WpfApp2
     public partial class MainWindow : Window
     {
         private string filePath;
+        string[] files;
+        byte[] buff = null;
+
 
         public MainWindow()
         {
@@ -56,35 +59,6 @@ namespace WpfApp2
             }
         }
 
-        private string RunScript2()
-        {
-            ProcessStartInfo start = new ProcessStartInfo();
-            start.FileName = "python";
-            start.Arguments = "qiskit2.py";
-            start.UseShellExecute = false;
-            start.RedirectStandardOutput = true;
-
-            using (Process process = Process.Start(start))
-            {
-                // Read the output of the Python script
-                using (StreamReader reader = process.StandardOutput)
-                {
-                    string result = reader.ReadToEnd();
-
-                    // Parse the output to extract the variable value
-                    string[] parts = result.Split(':');
-                    if (parts.Length == 2 && parts[0] == "VariableValue")
-                    {
-                        string variableValue = parts[1];
-                        return variableValue;
-                    }
-                    else
-                    {
-                        return "0";
-                    }
-                }
-            }
-        }
         private void UploadButton_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
@@ -99,23 +73,37 @@ namespace WpfApp2
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                
                 filePath = files[0];
                 string filename = System.IO.Path.GetFileName(files[0]);
                 FileNameLabel.Content = filename;
+                filePath = System.IO.Path.GetFullPath(files[0]);
+
+                DirectoryInfo directory = new DirectoryInfo(filePath);
+                DirectorySecurity ds = directory.GetAccessControl();
+                ds.AddAccessRule(new FileSystemAccessRule(Environment.UserName, FileSystemRights.FullControl, 
+                                                        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, 
+                                                        PropagationFlags.None, AccessControlType.Allow ));
+
+                FileStream fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read);
+                BinaryReader binaryReader = new BinaryReader(fileStream);
+                long num = new FileInfo(filePath).Length;
+                buff = binaryReader.ReadBytes((int)num);
+
             }
+            
             
         }
         private void EncryptFileCommand_Click(object sender, RoutedEventArgs e)
         {
-            
-            
+
             int asd = e.GetHashCode();
             string v = asd.ToString();
             string keyData = RunScript();
             string parameter = getParameter(keyData);
             string key = getKey(keyData);
-            FileNameLabel.Content = parameter;
+
         }
 
         private string getParameter(string keyData)

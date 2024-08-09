@@ -18,6 +18,7 @@ except ValueError:
 db = firestore.client()
 
 qc = QuantumCircuit(5, 5)
+
 qc.h(0)
 qc.h(1)
 qc.h(2)
