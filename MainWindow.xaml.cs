@@ -18,7 +18,8 @@ using Python.Runtime;
 using WpfApp2;
 using System.Reflection.Metadata;
 using System.Security.Cryptography;
-
+using System.Security.AccessControl;
+using System.IO.Compression;
 
 namespace WpfApp2
 {
@@ -28,10 +29,14 @@ namespace WpfApp2
     public partial class MainWindow : Window
     {
         private string filePath;
+        string[] files;
+        byte[] buff = new byte[8192];
 
+        
         public MainWindow()
         {
             InitializeComponent();
+            
         }
 
         private string RunScript() 
@@ -56,35 +61,6 @@ namespace WpfApp2
             }
         }
 
-        private string RunScript2()
-        {
-            ProcessStartInfo start = new ProcessStartInfo();
-            start.FileName = "python";
-            start.Arguments = "qiskit2.py";
-            start.UseShellExecute = false;
-            start.RedirectStandardOutput = true;
-
-            using (Process process = Process.Start(start))
-            {
-                // Read the output of the Python script
-                using (StreamReader reader = process.StandardOutput)
-                {
-                    string result = reader.ReadToEnd();
-
-                    // Parse the output to extract the variable value
-                    string[] parts = result.Split(':');
-                    if (parts.Length == 2 && parts[0] == "VariableValue")
-                    {
-                        string variableValue = parts[1];
-                        return variableValue;
-                    }
-                    else
-                    {
-                        return "0";
-                    }
-                }
-            }
-        }
         private void UploadButton_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
@@ -99,23 +75,70 @@ namespace WpfApp2
         {
             if (e.Data.GetDataPresent(DataFormats.FileDrop))
             {
-                string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                files = (string[])e.Data.GetData(DataFormats.FileDrop);
+                
                 filePath = files[0];
                 string filename = System.IO.Path.GetFileName(files[0]);
                 FileNameLabel.Content = filename;
+                filePath = System.IO.Path.GetFullPath(files[0]);
+
+                DirectoryInfo directory = new DirectoryInfo(filePath);
+                DirectorySecurity ds = directory.GetAccessControl();
+                ds.AddAccessRule(new FileSystemAccessRule(Environment.UserName, FileSystemRights.FullControl, 
+                                                        InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, 
+                                                        PropagationFlags.None, AccessControlType.Allow ));
+
+                byte[] bytes = zipBytes(filePath);
+                string s = Encoding.UTF8.GetString(bytes);
+                File.WriteAllText("C:\\Users\\osman\\source\\repos\\WpfApp2\\Trials.txt", s);
+                byteToZip(bytes);
+                Array.Clear(bytes);
             }
             
+            
         }
+
+        private byte[] zipBytes(string zipPath)
+        {
+            FileInfo fileInfo = new FileInfo(zipPath);
+            long fileSize = fileInfo.Length-1;
+            byte[] zipBytes = new byte[fileSize];
+            using (MemoryStream stream = new MemoryStream())
+            {
+                using (FileStream fs = new FileStream(zipPath, FileMode.Open, FileAccess.Read))
+                {
+                    fs.CopyTo(stream);
+                }
+                zipBytes = stream.ToArray();
+            }
+            return zipBytes;
+        }
+
+        private void byteToZip(byte[] bytes)
+        {
+
+            string outPath = "C:\\Users\\osman\\source\\repos\\WpfApp2\\Output\\denemeler.zip";
+            DirectoryInfo directory = new DirectoryInfo(outPath);
+            DirectorySecurity ds = directory.GetAccessControl();
+            ds.AddAccessRule(new FileSystemAccessRule(Environment.UserName, FileSystemRights.FullControl,
+                                                    InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit,
+                                                    PropagationFlags.None, AccessControlType.Allow));
+            directory.SetAccessControl(ds);
+            using (FileStream fs = new FileStream(outPath, FileMode.Create, FileAccess.Write))
+            {
+                fs.Write(bytes, 0, bytes.Length);
+            }
+        }
+
         private void EncryptFileCommand_Click(object sender, RoutedEventArgs e)
         {
-            
-            
+
             int asd = e.GetHashCode();
             string v = asd.ToString();
             string keyData = RunScript();
             string parameter = getParameter(keyData);
             string key = getKey(keyData);
-            FileNameLabel.Content = parameter;
+
         }
 
         private string getParameter(string keyData)
@@ -129,6 +152,10 @@ namespace WpfApp2
             return key;
         }
 
+        void Encryptor(string key, string IVKey, string inputFile, string outputFile)
+        {
+
+        }
     }
     
 }
