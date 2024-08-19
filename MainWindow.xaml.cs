@@ -20,6 +20,7 @@ using System.Reflection.Metadata;
 using System.Security.Cryptography;
 using System.Security.AccessControl;
 using System.IO.Compression;
+using Encrypter;
 
 namespace WpfApp2
 {
@@ -38,8 +39,7 @@ namespace WpfApp2
             InitializeComponent();
             
         }
-
-        private string RunScript() 
+        private void scriptInit()
         {
             ProcessStartInfo start = new ProcessStartInfo();
             Runtime.PythonDLL = @"C:\Users\osman\AppData\Local\Programs\Python\Python312\python312.dll";
@@ -47,6 +47,11 @@ namespace WpfApp2
             PythonEngine.Initialize();
             PythonEngine.PythonPath = @"C:\Users\osman\AppData\Local\Programs\Python\Python312\Lib\site-packages";
             start.Arguments = "qiskit2.py";
+        }
+
+        private string RunScript() 
+        {
+            scriptInit();
             using (Py.GIL())
             {
                 
@@ -60,7 +65,7 @@ namespace WpfApp2
                 return quasiParameter;
             }
         }
-
+        
         private void UploadButton_Click(object sender, RoutedEventArgs e)
         {
             Microsoft.Win32.OpenFileDialog openFileDialog = new Microsoft.Win32.OpenFileDialog();
@@ -129,7 +134,7 @@ namespace WpfApp2
                 fs.Write(bytes, 0, bytes.Length);
             }
         }
-
+        
         private void EncryptFileCommand_Click(object sender, RoutedEventArgs e)
         {
 
@@ -138,17 +143,20 @@ namespace WpfApp2
             string keyData = RunScript();
             string parameter = getParameter(keyData);
             string key = getKey(keyData);
-
+            KeyElements elements = new KeyElements(key);
+            byte[] iv = new byte [16];
+            iv = elements.IVGenerator(key);
+            byte[] assd = iv;
         }
 
         private string getParameter(string keyData)
         {
-            string parameter = keyData.Substring(98,20);
+            string parameter = keyData.Substring(286,20);
             return parameter;
         }
         private string getKey(string keyData) 
         {
-            string key = keyData.Substring(9, 85);
+            string key = keyData.Substring(9, 274);
             return key;
         }
 
